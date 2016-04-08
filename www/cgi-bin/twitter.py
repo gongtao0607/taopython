@@ -9,7 +9,7 @@ def search(keyword):
 	output_string=""
 	for tweet in j["tweets"]:
 		if tweet["message"]["twitter_lang"] == "en" and tweet["message"]["verb"] == "post":
-			#tweet["message"]["postedTime"],
+			#tweet["message"]["postedTime"]
 			#tweet["message"]["body"]
 			output_string+=(tweet["message"]["body"]+u"\n")
 	return output_string

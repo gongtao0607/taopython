@@ -1,2 +1,1 @@
-case sensitive
-sort time
+sort by 'time'
