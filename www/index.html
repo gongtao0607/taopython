@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sentiment analyzer</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<style>
+.bar { fill: steelblue; }
+.bar:hover { fill: brown; }
+.label { font: 10px sans-serif; text-anchor:middle; }
+.axis { font: 10px sans-serif; }
+.axis path,
+.axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }
+.x.axis path { display: none; }
+</style>
+<script>
+function formatDate(n) {
+	d=new Date(n*1000);
+	var Y = d.getFullYear().toString();
+	var M = ("0"+(d.getMonth() + 1)).slice(-2);
+	var D = ("0"+d.getDate()).slice(-2);
+	var h = ("0"+d.getHours()).slice(-2);
+	var m = ("0"+d.getMinutes()).slice(-2);
+	var s = ("0"+d.getSeconds()).slice(-2);
+	var str = h+':'+m+':'+s+" "+M+'/'+D+'/'+Y;
+	return str;
+}
+function analyze(q){
+	url="/cgi-bin/analyze.py?q="+encodeURIComponent(q);
+	$('#analyze_url').val(url);
+
+	d3.select("#list").html("Analyzing...");
+	d3.select("#chart").html("");
+
+	d3.json(url, function(error, data) {
+		if (error) {
+			d3.select("#list").html("Server returns error");
+			return;
+		}
+
+		d3.select("#list").html("Analysis history:&nbsp;");
+		d3.select("#list").append("select")
+			.selectAll().data(data).enter()
+			.append("option")
+			.attr("value", function(d){return d.id})
+			.text(function(d){return formatDate(d.time)});
+		$("#list>select").change(function(){draw($("#list>select").val())});
+		$("#list>select>option:last").attr("selected","selected").change();
+
+	});
+}
+function draw(id){
+	url="/cgi-bin/chart.py?id="+id;
+	$('#chart_url').val(url);
+	d3.select("#chart").html("Loading...");
+	d3.json(url, function(error, data) {
+		if (error) {
+			d3.select("#chart").html("Failed loading chart");
+			return;
+		}
+
+		d3.select("#chart").html("");
+		var margin = {top: 20, right: 20, bottom: 30, left: 40},
+		    width = 1080 - margin.left - margin.right,
+		    height = 500 - margin.top - margin.bottom;
+
+		var x = d3.scale.ordinal()
+			.rangeRoundBands([0, width], .1);
+
+		var y = d3.scale.linear()
+			.range([height, 0]);
+
+		var xAxis = d3.svg.axis()
+			.scale(x)
+			.orient("bottom");
+
+		var yAxis = d3.svg.axis()
+			.scale(y)
+			.orient("left")
+			.ticks(10, "");
+		var svg = d3.select("#chart").append("svg")
+			.attr("width", width + margin.left + margin.right)
+			.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+			.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+		x.domain(data.map(function(d) { return d.tone; }));
+		y.domain([0, 1]);
+
+		svg.append("g")
+			.attr("class", "x axis")
+			.attr("transform", "translate(0," + height + ")")
+			.call(xAxis);
+
+		svg.append("g")
+			.attr("class", "y axis")
+			.call(yAxis)
+			.append("text")
+			.attr("transform", "rotate(-90)")
+			.attr("y", 0)
+			.attr("dy", "-2.5em")
+			.style("text-anchor", "end")
+			.text("Score");
+
+		var bar = svg.selectAll(".bar")
+			.data(data).enter()
+		bar.append("rect")
+			.attr("class", "bar")
+			.attr("x", function(d) { return x(d.tone); })
+			.attr("width", x.rangeBand())
+			.attr("y", function(d) { return y(+d.score); })
+			.attr("height", function(d) { return height - y(+d.score); })
+		bar.append("text")
+			.attr("class", "label")
+			.attr("x", function(d) { return x(d.tone); })
+			.attr("dx",x.rangeBand()/2)
+			.attr("y", function(d) { return y(+d.score); })
+			.attr("dy","-0.2em")
+			.text(function(d) { return d.score; });
+	});
+}
+</script>
+<script>
+
+
+</script>
+</head>
+<body>
+	<table>
+		<tr>
+			<td>Try me:</td>
+		</tr>
+		<tr>
+			<td><input id="keyword" value="IBM" onkeydown="if(event.which==13)analyze($('#keyword').val())"/><input type="submit" value="Analyze" onclick="analyze($('#keyword').val());"/></td>
+		</tr>
+		<tr>
+			<td>
+				<input type="button" value="Show/Hide GET URL" onclick="$('#url_span').toggle();"><br/>
+				<table id="url_span" style="display: none">
+					<tr><td>Analyzer URL:</td><td><input id="analyze_url" size="50"/></td></tr>
+					<tr><td>Chart URL:</td><td><input id="chart_url" size="50"/></td></tr>
+				</table>
+			</td>
+		</tr>
+		<tr>
+			<td id="list"></td>
+		</tr>
+		<tr>
+			<td id="chart"></td>
+		</tr>
+	</table>
+</body>
+</html>
